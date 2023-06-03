@@ -239,7 +239,4 @@ def main(cfg):
 
 if __name__ == '__main__':
     cfg = parser_args()
-    noise_rates = [0.8, 0.6, 0.2, 0.4]
-    for rate in noise_rates:
-        cfg.noise_ratio = rate
-        main(cfg)
+    main(cfg)
