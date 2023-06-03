@@ -20,28 +20,19 @@ def parser_args():
 
     # -------------------   Dataset   ---------------------
     parser.add_argument('--config', type=str, default='config/cifar100')
-    # parser.add_argument('--dataset', type=str, default='cifar10d', help="[cifar10d/100, tinyimagenet, clothing1m]")
     parser.add_argument('--batch_size', type=int, default=128)
-    parser.add_argument('--aux_dataset', type=str, default='imageNet32', help="cifar : imageNet32, "
-                                                                              "tinyimagenet: imageNet64")
-    parser.add_argument('--aux_batch_size', type=int, default=128)
-    parser.add_argument('--aux_num_samples', type=int, default=50000)
-    parser.add_argument('--aux_num_to_avg', type=int, default=1, help='cifar: 1, tinyimagenet: 2')
-
+    
     # ------------------- Train-related -------------------
     # Model
-    parser.add_argument('--model', type=str, default='wrn', help='resnet18/34/50 and wrn')
-    parser.add_argument('--init_method', type=str, default='Xavier', help='Xavier or He')
+    parser.add_argument('--init_method', type=str, default='He', help='Xavier or He')
 
     # Noise
     parser.add_argument('--noise_type', type=str, default='asymmetric',
                         help='symmetric or asymmetric, openset, instance')
-    parser.add_argument('--noise_ratio', type=float, default=0.8, help='Set the noisy ratio')
+    parser.add_argument('--noise_ratio', type=float, default=0.4, help='Set the noisy ratio')
 
     # Optim
-    parser.add_argument('--opt', type=str, default='SGD', help='optim method : SGD or Adam')
     parser.add_argument('--weight-decay', type=float, default=1e-5)
-    parser.add_argument('--scheduler_type', type=str, default=' ', help='Set the leaning scheduler type')
 
     # Loss method
     parser.add_argument('--loss_type', type=str, default='soft', help="ce, hard, soft, adaptive")
@@ -52,7 +43,7 @@ def parser_args():
     parser.add_argument('--warmup-lr-scale', type=float, default=10.0)
 
     # Epochs
-    parser.add_argument('--warmup_epochs', type=int, default=30, help='warmup epochs')
+    parser.add_argument('--warmup_epochs', type=int, default=10, help='warmup epochs')
     parser.add_argument('--epochs', type=int, default=200, help='train epochs')
 
     args = parser.parse_args()
@@ -82,7 +73,7 @@ def main(cfg):
     # Build Logger
     logger, result_dir = build_logger(cfg)
 
-    # Get net optim scheduler
+    # Get net optim
     net = CNN(n_outputs=cfg.num_classes).to(device)
     net2 = CNN(n_outputs=cfg.num_classes).to(device)
     init_weights(net, init_method='He')
@@ -144,12 +135,12 @@ def main(cfg):
 
         # Train this epoch
         pbar = tqdm(train_loader, ncols=150, ascii=' >', leave=False, desc='training', total=len(train_loader))
-        for it, in_data in enumerate(pbar):
+        for it, samples in enumerate(pbar):
             curr_lr = [group['lr'] for group in optimizer.param_groups][0]
 
             # Divided data
-            in_X_weak, in_X_strong = in_data[0].to(device), in_data[1].to(device)
-            target, target_gt = in_data[2].long().to(device), in_data[3].long().to(device)
+            in_X_weak, in_X_strong = samples[0].to(device), samples[1].to(device)
+            target, target_gt = samples[2].long().to(device), samples[3].long().to(device)
 
             # predictions
             prob_weak = net(in_X_weak)
@@ -233,8 +224,8 @@ def main(cfg):
                     f'test loss: {test_loss:>6.4f} | '
                     f'test accuracy: {test_accuracy:>6.3f} | '
                     f'best accuracy: {best_accuracy:6.3f} @ epoch: {best_epoch:03d} |'
-                    f'student loss: {test_loss2:>6.4f} | '
-                    f'student acc: {test_accuracy2:>6.3f} | '
+                    f'net2 loss: {test_loss2:>6.4f} | '
+                    f'net2 acc: {test_accuracy2:>6.3f} | '
                     f'best accuracy: {best_accuracy2:6.3f} @ epoch: {best_epoch2:03d} |' 
                     f'epoch runtime: {runtime:6.2f} sec | '
                     f'selected clean rate: {clean_num/(selection_num+1e-8):6.3f} | '
